@@ -113,6 +113,7 @@ static int read_number(void)
         ch = kim_getc();
         if (ch == 13 || ch == 10) {
             if (have_digit) {
+                newline();
                 return value * sign;
             }
             continue;
@@ -337,11 +338,9 @@ static void print_sector(void)
     int y;
     int tile;
 
-    print("   1  2  3  4  5  6  7  8");
+    print("-=--=--=--=--=--=--=--=-");
     newline();
     for (y = 1; y <= 8; ++y) {
-        print_num(y);
-        putch(' ');
         for (x = 1; x <= 8; ++x) {
             tile = board[sindex(x, y)];
             if (tile == TILE_SHIP) {
@@ -356,25 +355,43 @@ static void print_sector(void)
                 print("   ");
             }
         }
+        if (y == 2) {
+            print(" STARDATE ");
+            print_num(stardate);
+        } else if (y == 3) {
+            print(" CONDITION ");
+            if (docked()) {
+                print("DOCKED");
+            } else if (local_klingons > 0) {
+                print("RED");
+            } else if (energy < 300) {
+                print("YELLOW");
+            } else {
+                print("GREEN");
+            }
+        } else if (y == 4) {
+            print(" QUADRANT ");
+            print_num(qx);
+            putch(',');
+            print_num(qy);
+        } else if (y == 5) {
+            print(" SECTOR   ");
+            print_num(sx);
+            putch(',');
+            print_num(sy);
+        } else if (y == 6) {
+            print(" ENERGY    ");
+            print_num(energy);
+        } else if (y == 7) {
+            print(" SHIELDS   ");
+            print_num(shields);
+        } else if (y == 8) {
+            print(" PHOTON TORPEDOES ");
+            print_num(torpedoes);
+        }
         newline();
     }
-    print("QUADRANT ");
-    print_num(qx);
-    putch(',');
-    print_num(qy);
-    print("  SECTOR ");
-    print_num(sx);
-    putch(',');
-    print_num(sy);
-    print("  STARDATE ");
-    print_num(stardate);
-    newline();
-    print("ENERGY ");
-    print_num(energy);
-    print("  SHIELDS ");
-    print_num(shields);
-    print("  TORPEDOES ");
-    print_num(torpedoes);
+    print("-=--=--=--=--=--=--=--=-");
     newline();
 }
 
@@ -384,16 +401,23 @@ static void long_scan(void)
     int y;
     int qx0;
     int code;
+    int column;
 
     if (damage[2] < 0) {
         print("LONG RANGE SENSORS INOPERABLE");
         newline();
         return;
     }
-    print("LONG RANGE SENSOR SCAN");
+    print("LONG RANGE SENSOR SCAN FOR QUADRANT ");
+    print_num(qx);
+    putch(',');
+    print_num(qy);
+    newline();
+    print("-------------------");
     newline();
     for (y = qy - 1; y <= qy + 1; ++y) {
-        for (x = qx - 1; x <= qx + 1; ++x) {
+        for (column = 0; column < 3; ++column) {
+            x = qx + column - 1;
             if (x < 1 || x > 8 || y < 1 || y > 8) {
                 code = 0;
             } else {
@@ -401,9 +425,13 @@ static void long_scan(void)
                 code = display_code(galaxy[qx0]);
                 known[qx0] = galaxy[qx0];
             }
+            print("| ");
             print3(code);
             putch(' ');
         }
+        putch('|');
+        newline();
+        print("-------------------");
         newline();
     }
 }
@@ -874,15 +902,85 @@ static void computer(void)
 
 static void instructions(void)
 {
-    print("STAR TREK (1971) - KIM-1");
+    static const char *lines[] = {
+        "     INSTRUCTIONS:",
+        "",
+        "<*> = ENTERPRISE",
+        "+++ = KLINGON",
+        ">!< = STARBASE",
+        " *  = STAR",
+        "",
+        "COMMAND 0 = WARP ENGINE CONTROL",
+        "  'COURSE IS IN A CIRCULAR NUMERICAL         4    3    2",
+        "  VECTOR ARRANGEMENT AS SHOWN.                `.  :  .'",
+        "  INTERGER AND REAL VALUES MAY BE               `.:.'",
+        "  USED.  THEREFORE COURSE 1.5 IS             5---<*>---1",
+        "  HALF WAY BETWEEN 1 AND 2.                     .':`.",
+        "                                              .'  :  `.",
+        "  A VECTOR OF 9 IS UNDEFINED, BUT            6    7    8",
+        "  VALUES MAY APPROACH 9.",
+        "                                               COURSE",
+        "  ONE 'WARP FACTOR' IS THE SIZE OF",
+        "  ONE QUADRANT.  THEREFORE TO GET FROM",
+        "  QUADRANT 5,6 TO 5,5 YOU WOULD USE COURSE 3, WARP",
+        "  FACTOR 1. COORDINATES ARE SPECIFIED USING X,Y NOTATION",
+        "  WITH X 1-8 FROM LEFT-RIGHT AND Y 1-8 FROM TOP-BOTTOM.",
+        "",
+        "COMMAND 1 = SHORT RANGE SENSOR SCAN",
+        "  PRINTS THE QUADRANT YOU ARE CURRENTLY IN, INCLUDING",
+        "  STARS, KLINGONS, STARBASES, AND THE ENTERPRISE; ALONG",
+        "  WITH OTHER PERTINATE INFORMATION.",
+        "",
+        "COMMAND 2 = LONG RANGE SENSOR SCAN",
+        "  SHOWS CONDITIONS IN SPACE FOR ONE QUADRANT ON EACH SIDE",
+        "  OF THE ENTERPRISE IN THE MIDDLE OF THE SCAN.  THE SCAN",
+        "  IS CODED IN THE FORM XXX, WHERE THE UNITS DIGIT IS THE",
+        "  NUMBER OF STARS, THE TENS DIGIT IS THE NUMBER OF STAR-",
+        "  BASES, THE HUNDREDS DIGIT IS THE NUMBER OF KLINGONS.",
+        "",
+        "COMMAND 3 = PHASER CONTROL",
+        "  ALLOWS YOU TO DESTROY THE KLINGONS BY HITTING HIM WITH",
+        "  SUITABLY LARGE NUMBERS OF ENERGY UNITS TO DEPLETE HIS ",
+        "  SHIELD POWER.  KEEP IN MIND THAT WHEN YOU SHOOT AT",
+        "  HIM, HE GONNA DO IT TO YOU TOO.",
+        "",
+        "COMMAND 4 = PHOTON TORPEDO CONTROL",
+        "  COURSE IS THE SAME AS USED IN WARP ENGINE CONTROL",
+        "  IF YOU HIT THE KLINGON, HE IS DESTROYED AND CANNOT FIRE",
+        "  BACK AT YOU.  IF YOU MISS, HE WILL SHOOT HIS PHASERS AT",
+        "  YOU.",
+        "   NOTE: THE LIBRARY COMPUTER (COMMAND 7) HAS AN OPTION",
+        "   TO COMPUTE TORPEDO TRAJECTORY FOR YOU (OPTION 2).",
+        "",
+        "COMMAND 5 = SHIELD CONTROL",
+        "  DEFINES NUMBER OF ENERGY UNITS TO ASSIGN TO SHIELDS",
+        "  ENERGY IS TAKEN FROM TOTAL SHIP'S ENERGY.",
+        "",
+        "COMMAND 6 = DAMAGE CONTROL REPORT",
+        "  GIVES STATE OF REPAIRS OF ALL DEVICES.  A STATE OF REPAIR",
+        "  LESS THAN ZERO SHOWS THAT THAT DEVICE IS TEMPORARALY",
+        "  DAMAGED.",
+        "",
+        "COMMAND 7 = LIBRARY COMPUTER",
+        "  THE LIBRARY COMPUTER CONTAINS THREE OPTIONS:",
+        "    OPTION 0 = CUMULATIVE GALACTIC RECORD",
+        "     SHOWS COMPUTER MEMORY OF THE RESULTS OF ALL PREVIOUS",
+        "     LONG RANGE SENSOR SCANS",
+        "    OPTION 1 = STATUS REPORT",
+        "     SHOWS NUMBER OF KLINGONS, STARDATES AND STARBASES",
+        "     LEFT.",
+        "    OPTION 2 = PHOTON TORPEDO DATA",
+        "     GIVES TRAJECTORY AND DISTANCE BETWEEN THE ENTERPRISE",
+        "     AND ALL KLINGONS IN YOUR QUADRANT",
+        0
+    };
+    int i;
+
     newline();
-    print("COMMANDS: 0 WARP  1 SHORT SCAN  2 LONG SCAN");
-    newline();
-    print("          3 PHASERS  4 TORPEDOES  5 SHIELDS");
-    newline();
-    print("          6 DAMAGE REPORT  7 COMPUTER");
-    newline();
-    print("COURSE: 1=E 2=NE 3=N 4=NW 5=W 6=SW 7=S 8=SE");
+    for (i = 0; lines[i] != 0; ++i) {
+        print(lines[i]);
+        newline();
+    }
     newline();
 }
 
@@ -967,9 +1065,24 @@ static void initialize_game(int seed)
 
 int main(void)
 {
+    int choice;
     int seed;
 
-    instructions();
+    print("STAR TREK");
+    newline();
+    newline();
+    newline();
+    newline();
+    print("ENTER 1 FOR INSTRUCTIONS OR 2 TO PLAY ");
+    choice = read_number();
+    while (choice != 1 && choice != 2) {
+        print("ENTER 1 FOR INSTRUCTIONS OR 2 TO PLAY ");
+        choice = read_number();
+    }
+    if (choice == 1) {
+        instructions();
+    }
+    newline();
     print("SEED NUMBER ");
     seed = read_number();
     initialize_game(seed);
